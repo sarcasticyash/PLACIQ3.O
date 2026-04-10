@@ -781,17 +781,89 @@ router.post(
 );
 
 // 🧠 SIMPLE ANALYZE ROUTE (ONLY RESUME)
+
 router.post('/analyze', authMiddleware, async (req, res) => {
   try {
     const { agentType, data } = req.body;
 
-    if (agentType !== 'resume') {
+    let result;
+
+    if (agentType === 'resume') {
+      result = await resumeAgent(data);
+
+    } else if (agentType === 'profile') {
+      result = {
+        strengths: ["Strong DSA", "React skills"],
+        weaknesses: ["System design"],
+        readinessScore: 70
+      };
+
+    } else if (agentType === 'market') {
+      result = {
+        topRoles: ["Software Engineer", "Backend Developer"],
+        demand: "High",
+        trend: "AI + Fullstack booming"
+      };
+
+    } else if (agentType === 'roadmap') {
+      // 🔥 FRONTEND MATCH FIX
+      result = {
+        timeline: "12 weeks",
+        dailyTarget: "4-5 hours",
+        totalTasks: 19,
+        completedTasks: 0,
+        progress: 0,
+
+        weeks: [
+          {
+            title: "Week 1-4",
+            focus: "DSA Foundation",
+            tasks: [
+              "Arrays + Strings",
+              "Recursion",
+              "Sorting",
+              "20 LeetCode problems"
+            ]
+          },
+          {
+            title: "Week 5-8",
+            focus: "Advanced DSA + Backend",
+            tasks: [
+              "Trees & Graphs",
+              "DP",
+              "Build REST API",
+              "MongoDB"
+            ]
+          },
+          {
+            title: "Week 9-12",
+            focus: "Projects + Interviews",
+            tasks: [
+              "2 Projects",
+              "System Design",
+              "Mock Interviews",
+              "Apply Jobs"
+            ]
+          }
+        ],
+
+        tip: "Consistency beats intensity. Track daily progress."
+      };
+
+    } else if (agentType === 'interview') {
+      result = {
+        questions: [
+          "Explain closure in JavaScript",
+          "What is REST API?",
+          "Difference between SQL and NoSQL"
+        ]
+      };
+
+    } else {
       return res.status(400).json({
-        error: 'Only resume supported'
+        error: 'Invalid agent type'
       });
     }
-
-    const result = await resumeAgent(data);
 
     res.json({ success: true, result });
 
