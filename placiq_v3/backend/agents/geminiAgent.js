@@ -86,6 +86,35 @@ module.exports = { callGemini };
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+async function resumeAgent({ resumeText, role }) {
+  const prompt = `
+Analyze this resume for role: ${role}
+
+${resumeText.slice(0, 6000)}
+
+Return JSON:
+{
+  "atsScore": number,
+  "overallVerdict": "string",
+  "weaknesses": ["string"],
+  "roadmap": ["string"],
+  "keywordsToAdd": ["string"],
+  "optimizedSummary": "string"
+}
+`;
+
+  const resp = await callGemini(prompt);
+
+  try {
+    const clean = resp.replace(/```json|```/g, '').trim();
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    return JSON.parse(clean.substring(start, end + 1));
+  } catch {
+    // 👇 USE YOUR EXISTING MOCK (no change)
+    return JSON.parse(getMockResponse("resume"));
+  }
+}
 
 async function callGemini(prompt, systemContext = '') {
   try {
