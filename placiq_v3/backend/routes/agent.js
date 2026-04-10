@@ -705,12 +705,8 @@ module.exports = router;*/
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
 
-const {
-  resumeAgent,
-  profileAgent,
-  roadmapAgent,
-  marketAgent
-} = require('../agents/geminiAgent');
+// ✅ ONLY THIS IMPORT (no duplicate)
+const { resumeAgent } = require('../agents/geminiAgent');
 
 const multer = require('multer');
 const path = require('path');
@@ -746,7 +742,7 @@ router.post(
           resumeText = pdfData.text;
         } catch (err) {
           return res.status(400).json({
-            error: 'Failed to read PDF (maybe protected)'
+            error: 'Failed to read PDF'
           });
         }
       } else {
@@ -767,14 +763,6 @@ router.post(
         role: req.body.targetRole || 'Software Engineer'
       });
 
-      // 💾 Save to DB (async)
-      const User = require('../models/User');
-      if (req.user.id !== 'demo123') {
-        User.findByIdAndUpdate(req.user.id, {
-          $set: { 'profile.resumeText': resumeText.slice(0, 5000) }
-        }).catch(err => console.error("DB Save Error:", err));
-      }
-
       res.json({
         success: true,
         analysis
@@ -789,35 +777,18 @@ router.post(
   }
 );
 
-// 🧠 GENERIC MULTI-AI ROUTE
+// 🧠 SIMPLE ANALYZE ROUTE (ONLY RESUME)
 router.post('/analyze', authMiddleware, async (req, res) => {
   try {
     const { agentType, data } = req.body;
 
-    let result;
-
-    switch (agentType) {
-      case 'resume':
-        result = await resumeAgent(data);
-        break;
-
-      case 'profile':
-        result = await profileAgent(data);
-        break;
-
-      case 'roadmap':
-        result = await roadmapAgent(data);
-        break;
-
-      case 'market':
-        result = await marketAgent();
-        break;
-
-      default:
-        return res.status(400).json({
-          error: 'Invalid agent type'
-        });
+    if (agentType !== 'resume') {
+      return res.status(400).json({
+        error: 'Only resume supported'
+      });
     }
+
+    const result = await resumeAgent(data);
 
     res.json({ success: true, result });
 
