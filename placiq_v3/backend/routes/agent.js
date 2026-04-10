@@ -180,16 +180,135 @@
 
 // module.exports = router;
 
+// const router = require('express').Router();
+// const authMiddleware = require('../middleware/auth');
+// const { callGemini } = require('../agents/geminiAgent');
+// const { callClaude } = require('../agents/claudeAgent');
+// const multer = require('multer');
+// const path = require('path');
+// const fs = require('fs');
+// const pdfParse = require('pdf-parse');
+
+// // FIX: Use Memory Storage for Render (more reliable than disk storage)
+// const storage = multer.memoryStorage();
+// const upload = multer({ 
+//   storage, 
+//   limits: { fileSize: 5 * 1024 * 1024 }
+// });
+
+// const callAI = async (prompt, system = '', messages = null) => {
+//   try { return await callClaude(prompt, system, messages); }
+//   catch (e) { return await callGemini(prompt, system); }
+// };
+
+// // --- AGENT FUNCTIONS ---
+
+// async function resumeAgent(data) {
+//   const hasText = data.resumeText && data.resumeText.length > 50;
+  
+//   const prompt = hasText
+//     ? `Analyze this resume for the role of: ${data.role}. 
+//        Evaluate ATS compatibility, identify skill gaps, and provide a career roadmap.
+       
+//        RESUME TEXT:
+//        ${data.resumeText.substring(0, 3500)}
+
+//        RETURN ONLY A VALID JSON OBJECT (No markdown, no backticks):
+//        {
+//          "atsScore": 0-100,
+//          "overallVerdict": "Short summary",
+//          "improvements": [{"priority": "high|medium|low", "issue": "str", "fix": "str"}],
+//          "weaknesses": ["list specific missing skills or red flags"],
+//          "roadmap": ["Step 1 for next 7 days", "Step 2 for next 14 days", "Step 3 for next 30 days"],
+//          "optimizedSummary": "AI-written executive summary",
+//          "keywordsToAdd": ["list"],
+//          "keywordsFound": ["list"],
+//          "sectionScores": {"experience": 0-100, "skills": 0-100, "projects": 0-100, "education": 0-100}
+//        }`
+//     : `Generate general resume advice for ${data.role}. Return the same JSON structure.`;
+
+//   const resp = await callAI(prompt, 'Expert Career Coach & ATS Optimizer. Return raw JSON only.');
+  
+//   try {
+//     const cleaned = resp.replace(/```json\n?|\n?```/g, '').trim();
+//     const parsed = JSON.parse(cleaned);
+//     return {
+//       ...parsed,
+//       weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : ["General improvements needed"],
+//       roadmap: Array.isArray(parsed.roadmap) ? parsed.roadmap : ["Update skills", "Practice LeetCode", "Apply"]
+//     };
+//   } catch (e) {
+//     console.error("Parse Error:", e);
+//     return { atsScore: 60, overallVerdict: "Check formatting", weaknesses: ["Parsing error"], roadmap: ["Try again"] };
+//   }
+// }
+
+// // ... (Existing profileAgent, marketAgent, strategyAgent, interviewAgent logic remains same)
+
+// // --- ROUTES ---
+
+// // Resume upload + analysis
+// router.post('/resume-upload', authMiddleware, upload.single('resume'), async (req, res) => {
+//   try {
+//     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    
+//     let resumeText = '';
+//     const ext = path.extname(req.file.originalname).toLowerCase();
+
+//     if (ext === '.pdf') {
+//       const data = await pdfParse(req.file.buffer);
+//       resumeText = data.text;
+//     } else {
+//       resumeText = req.file.buffer.toString('utf-8');
+//     }
+
+//     const analysis = await resumeAgent({ 
+//       resumeText, 
+//       role: req.body.targetRole || 'Software Engineer' 
+//     });
+
+//     // Save to DB if not demo
+//     try {
+//       const User = require('../models/User');
+//       if (req.user.id !== 'demo123') {
+//         await User.findByIdAndUpdate(req.user.id, { 
+//           $set: { 'profile.resumeText': resumeText.substring(0, 5000) } 
+//         });
+//       }
+//     } catch (dbErr) { console.error("DB Save Error:", dbErr); }
+
+//     res.json({ success: true, analysis });
+//   } catch (e) {
+//     console.error("Upload Error:", e);
+//     res.status(500).json({ error: e.message });
+//   }
+// });
+
+// // Standard Agent Analysis
+// router.post('/analyze', authMiddleware, async (req, res) => {
+//   const { agentType, data } = req.body;
+//   try {
+//     let result;
+//     if (agentType === 'resume') result = await resumeAgent(data);
+//     else if (agentType === 'profile') result = await profileAgent(data);
+//     else if (agentType === 'market') result = await marketAgent(data);
+//     // ... add other cases
+//     res.json({ success: true, result });
+//   } catch (e) { res.status(500).json({ error: e.message }); }
+// });
+
+// module.exports = router;
+
+
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
 const { callGemini } = require('../agents/geminiAgent');
 const { callClaude } = require('../agents/claudeAgent');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const pdfParse = require('pdf-parse');
 
-// FIX: Use Memory Storage for Render (more reliable than disk storage)
+// Memory storage is best for serverless/Render environments
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage, 
@@ -201,98 +320,122 @@ const callAI = async (prompt, system = '', messages = null) => {
   catch (e) { return await callGemini(prompt, system); }
 };
 
+// --- HELPER: JSON Cleaner ---
+const parseAIResponse = (resp) => {
+  try {
+    const cleaned = resp.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Failed to parse AI JSON:", resp);
+    throw new Error("AI returned invalid data format");
+  }
+};
+
 // --- AGENT FUNCTIONS ---
 
 async function resumeAgent(data) {
-  const hasText = data.resumeText && data.resumeText.length > 50;
+  const prompt = `Analyze resume for role: ${data.role}. 
+  RESUME TEXT: ${data.resumeText?.substring(0, 3500)}
   
-  const prompt = hasText
-    ? `Analyze this resume for the role of: ${data.role}. 
-       Evaluate ATS compatibility, identify skill gaps, and provide a career roadmap.
-       
-       RESUME TEXT:
-       ${data.resumeText.substring(0, 3500)}
-
-       RETURN ONLY A VALID JSON OBJECT (No markdown, no backticks):
-       {
-         "atsScore": 0-100,
-         "overallVerdict": "Short summary",
-         "improvements": [{"priority": "high|medium|low", "issue": "str", "fix": "str"}],
-         "weaknesses": ["list specific missing skills or red flags"],
-         "roadmap": ["Step 1 for next 7 days", "Step 2 for next 14 days", "Step 3 for next 30 days"],
-         "optimizedSummary": "AI-written executive summary",
-         "keywordsToAdd": ["list"],
-         "keywordsFound": ["list"],
-         "sectionScores": {"experience": 0-100, "skills": 0-100, "projects": 0-100, "education": 0-100}
-       }`
-    : `Generate general resume advice for ${data.role}. Return the same JSON structure.`;
-
-  const resp = await callAI(prompt, 'Expert Career Coach & ATS Optimizer. Return raw JSON only.');
-  
-  try {
-    const cleaned = resp.replace(/```json\n?|\n?```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return {
-      ...parsed,
-      weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : ["General improvements needed"],
-      roadmap: Array.isArray(parsed.roadmap) ? parsed.roadmap : ["Update skills", "Practice LeetCode", "Apply"]
-    };
-  } catch (e) {
-    console.error("Parse Error:", e);
-    return { atsScore: 60, overallVerdict: "Check formatting", weaknesses: ["Parsing error"], roadmap: ["Try again"] };
-  }
+  Return JSON:
+  {
+    "atsScore": number,
+    "overallVerdict": "string",
+    "weaknesses": ["specific gaps"],
+    "roadmap": ["Step 1", "Step 2", "Step 3"],
+    "keywordsToAdd": ["skills to learn"],
+    "optimizedSummary": "string",
+    "sectionScores": {"experience": 80, "skills": 70, "projects": 60, "education": 90}
+  }`;
+  const resp = await callAI(prompt, 'Expert ATS Optimizer. Return raw JSON only.');
+  return parseAIResponse(resp);
 }
 
-// ... (Existing profileAgent, marketAgent, strategyAgent, interviewAgent logic remains same)
+async function profileAgent(data) {
+  const prompt = `Analyze student profile: ${JSON.stringify(data)}.
+  Return JSON:
+  {
+    "readinessScore": number,
+    "readinessLevel": "Beginner|Intermediate|Ready",
+    "summary": "string",
+    "weaknesses": ["skill gaps"],
+    "roadmap": ["Week 1 prep", "Week 2 prep"],
+    "priorityActions": ["action 1"]
+  }`;
+  const resp = await callAI(prompt, 'Placement Officer. Return JSON.');
+  return parseAIResponse(resp);
+}
+
+async function marketAgent(data) {
+  const prompt = `Tech market trends 2025-2026 for ${data.role}. 
+  Return JSON:
+  {
+    "hotSkills": [{"skill": "name", "demand": 90}],
+    "topHiringCompanies": ["names"],
+    "averageSalary": "string",
+    "roadmap": ["Learning path for market readiness"]
+  }`;
+  const resp = await callAI(prompt, 'Market Analyst. Return JSON.');
+  return parseAIResponse(resp);
+}
+
+async function strategyAgent(data) {
+  const prompt = `Create placement strategy for ${data.role}.
+  Return JSON:
+  {
+    "phases": [{"week": "1", "focus": "topic", "tasks": []}],
+    "roadmap": ["Long term goals"],
+    "weaknesses": ["Potential strategy pitfalls"]
+  }`;
+  const resp = await callAI(prompt, 'Career Strategist. Return JSON.');
+  return parseAIResponse(resp);
+}
+
+async function interviewAgent(data) {
+  const prompt = `Interview prep for ${data.role}.
+  Return JSON:
+  {
+    "questions": [{"q": "text", "difficulty": "Hard"}],
+    "weaknesses": ["Common mistake areas"],
+    "roadmap": ["Mock interview schedule"]
+  }`;
+  const resp = await callAI(prompt, 'Technical Interviewer. Return JSON.');
+  return parseAIResponse(resp);
+}
 
 // --- ROUTES ---
 
-// Resume upload + analysis
 router.post('/resume-upload', authMiddleware, upload.single('resume'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    
-    let resumeText = '';
-    const ext = path.extname(req.file.originalname).toLowerCase();
+    let resumeText = (path.extname(req.file.originalname).toLowerCase() === '.pdf') 
+      ? (await pdfParse(req.file.buffer)).text 
+      : req.file.buffer.toString('utf-8');
 
-    if (ext === '.pdf') {
-      const data = await pdfParse(req.file.buffer);
-      resumeText = data.text;
-    } else {
-      resumeText = req.file.buffer.toString('utf-8');
+    const analysis = await resumeAgent({ resumeText, role: req.body.targetRole || 'Software Engineer' });
+
+    // Optional: Update user record with resume text
+    const User = require('../models/User');
+    if (req.user.id !== 'demo123') {
+      await User.findByIdAndUpdate(req.user.id, { $set: { 'profile.resumeText': resumeText.substring(0, 5000) } });
     }
 
-    const analysis = await resumeAgent({ 
-      resumeText, 
-      role: req.body.targetRole || 'Software Engineer' 
-    });
-
-    // Save to DB if not demo
-    try {
-      const User = require('../models/User');
-      if (req.user.id !== 'demo123') {
-        await User.findByIdAndUpdate(req.user.id, { 
-          $set: { 'profile.resumeText': resumeText.substring(0, 5000) } 
-        });
-      }
-    } catch (dbErr) { console.error("DB Save Error:", dbErr); }
-
     res.json({ success: true, analysis });
-  } catch (e) {
-    console.error("Upload Error:", e);
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Standard Agent Analysis
 router.post('/analyze', authMiddleware, async (req, res) => {
   const { agentType, data } = req.body;
   try {
     let result;
-    if (agentType === 'resume') result = await resumeAgent(data);
-    else if (agentType === 'profile') result = await profileAgent(data);
-    else if (agentType === 'market') result = await marketAgent(data);
-    // ... add other cases
+    switch (agentType) {
+      case 'resume':    result = await resumeAgent(data); break;
+      case 'profile':   result = await profileAgent(data); break;
+      case 'market':    result = await marketAgent(data); break;
+      case 'strategy':  result = await strategyAgent(data); break;
+      case 'interview': result = await interviewAgent(data); break;
+      default: return res.status(400).json({ error: 'Invalid agent' });
+    }
     res.json({ success: true, result });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

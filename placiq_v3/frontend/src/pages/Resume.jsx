@@ -236,24 +236,138 @@
 //   );
 // }
 
-import React, { useState, useRef, useCallback } from 'react';
+// import React, { useState, useRef, useCallback } from 'react';
+// import { useAuth, api } from '../context/AuthContext';
+// import toast from 'react-hot-toast';
+
+// // --- Gauge Component ---
+// function ScoreGauge({ score }) {
+//   const color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
+//   const r = 54; const circ = 2 * Math.PI * r; const offset = circ - (score / 100) * circ;
+//   return (
+//     <div style={{ position:'relative', width:130, height:130, display:'flex', alignItems:'center', justifyContent:'center' }}>
+//       <svg width="130" height="130" viewBox="0 0 130 130" style={{ transform:'rotate(-90deg)', position:'absolute' }}>
+//         <circle cx="65" cy="65" r={r} fill="none" stroke="var(--surface3)" strokeWidth="10" />
+//         <circle cx="65" cy="65" r={r} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
+//           strokeDasharray={circ} strokeDashoffset={offset} style={{ transition:'stroke-dashoffset 1.5s' }} />
+//       </svg>
+//       <div style={{ textAlign:'center' }}>
+//         <div style={{ fontSize:32, fontWeight:800, color }}>{score}</div>
+//         <div style={{ fontSize:11, color:'var(--text3)' }}>ATS Score</div>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default function Resume() {
+//   const { user } = useAuth();
+//   const [file, setFile] = useState(null);
+//   const [loading, setLoading] = useState(false);
+//   const [result, setResult] = useState(null);
+//   const [targetRole, setTargetRole] = useState(user?.profile?.targetRole || 'Software Engineer');
+//   const fileRef = useRef();
+
+//   const analyze = async () => {
+//     if (!file) return toast.error('Please upload a file');
+//     setLoading(true);
+//     try {
+//       const fd = new FormData();
+//       fd.append('resume', file);
+//       fd.append('targetRole', targetRole);
+
+//       // Hits /api/agent/resume-upload via our Global API instance
+//       const res = await api.post('/agent/resume-upload', fd);
+//       setResult(res.data.analysis);
+//       toast.success('Analysis Deep Dive Complete!');
+//     } catch (e) {
+//       toast.error('AI Analysis Failed');
+//     } finally { setLoading(false); }
+//   };
+
+//   return (
+//     <div style={{ padding:'32px', maxWidth:1100, margin:'0 auto' }}>
+//       <h1 style={{ fontFamily:'Outfit', fontSize:32, marginBottom:8 }}>AI Resume Intelligence</h1>
+//       <p style={{ color:'var(--text3)', marginBottom:32 }}>Get a personalized roadmap and weakness analysis from Claude AI.</p>
+
+//       {/* Upload Zone */}
+//       <div onClick={() => fileRef.current.click()} style={{ border:'2px dashed var(--border)', borderRadius:20, padding:40, textAlign:'center', cursor:'pointer', background:'var(--surface)', marginBottom:24 }}>
+//         <input ref={fileRef} type="file" hidden onChange={e => setFile(e.target.files[0])} />
+//         <div style={{ fontSize:40 }}>{file ? '📄' : '☁️'}</div>
+//         <div style={{ fontWeight:600, marginTop:10 }}>{file ? file.name : 'Click to upload Resume (PDF/DOCX)'}</div>
+//       </div>
+
+//       <div style={{ display:'flex', gap:12, marginBottom:40 }}>
+//         <input value={targetRole} onChange={e => setTargetRole(e.target.value)} placeholder="Target Job Role..." style={{ flex:1, padding:'12px', borderRadius:10, background:'var(--bg)', border:'1px solid var(--border)', color:'white' }} />
+//         <button onClick={analyze} disabled={loading} className="btn btn-primary">
+//           {loading ? 'AI is thinking...' : 'Generate Full Roadmap'}
+//         </button>
+//       </div>
+
+//       {result && (
+//         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
+//           {/* Analysis Card */}
+//           <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)', display:'flex', gap:30, alignItems:'center' }}>
+//             <ScoreGauge score={result.atsScore} />
+//             <div>
+//               <h2 style={{ fontSize:22, marginBottom:10 }}>{result.overallVerdict}</h2>
+//               <p style={{ color:'var(--text2)', fontSize:14 }}>{result.optimizedSummary}</p>
+//             </div>
+//           </div>
+
+//           {/* ROADMAP SECTION */}
+//           <div style={{ background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
+//             <h3 style={{ marginBottom:16, display:'flex', alignItems:'center', gap:10 }}>🗺️ Career Roadmap</h3>
+//             {result.roadmap?.map((step, i) => (
+//               <div key={i} style={{ padding:'12px', background:'var(--bg2)', borderRadius:12, marginBottom:10, borderLeft:'4px solid var(--accent2)' }}>
+//                 <div style={{ fontSize:11, color:'var(--accent2)', fontWeight:800 }}>STEP {i+1}</div>
+//                 <div style={{ fontSize:14 }}>{step}</div>
+//               </div>
+//             ))}
+//           </div>
+
+//           {/* WEAKNESSES SECTION */}
+//           <div style={{ background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
+//             <h3 style={{ marginBottom:16, display:'flex', alignItems:'center', gap:10 }}>⚠️ Skill Gaps & Weaknesses</h3>
+//             {result.weaknesses?.map((w, i) => (
+//               <div key={i} style={{ padding:'12px', background:'rgba(255,100,100,0.05)', borderRadius:12, marginBottom:10, color:'var(--red)', fontSize:14, border:'1px solid rgba(255,100,100,0.1)' }}>
+//                 • {w}
+//               </div>
+//             ))}
+//           </div>
+
+//           {/* KEYWORDS */}
+//           <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
+//             <h3 style={{ marginBottom:16 }}>🏷️ Keywords to Add for ATS</h3>
+//             <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+//               {result.keywordsToAdd?.map((kw, i) => (
+//                 <span key={i} style={{ background:'var(--bg2)', padding:'6px 16px', borderRadius:20, fontSize:13, border:'1px solid var(--border)' }}>+ {kw}</span>
+//               ))}
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+import React, { useState, useRef } from 'react';
 import { useAuth, api } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 // --- Gauge Component ---
 function ScoreGauge({ score }) {
-  const color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
+  const color = score >= 80 ? '#00e87a' : score >= 60 ? '#ffb547' : '#ff4d4d';
   const r = 54; const circ = 2 * Math.PI * r; const offset = circ - (score / 100) * circ;
   return (
     <div style={{ position:'relative', width:130, height:130, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <svg width="130" height="130" viewBox="0 0 130 130" style={{ transform:'rotate(-90deg)', position:'absolute' }}>
         <circle cx="65" cy="65" r={r} fill="none" stroke="var(--surface3)" strokeWidth="10" />
         <circle cx="65" cy="65" r={r} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={offset} style={{ transition:'stroke-dashoffset 1.5s' }} />
+          strokeDasharray={circ} strokeDashoffset={offset} style={{ transition:'stroke-dashoffset 1.5s ease-out' }} />
       </svg>
       <div style={{ textAlign:'center' }}>
-        <div style={{ fontSize:32, fontWeight:800, color }}>{score}</div>
-        <div style={{ fontSize:11, color:'var(--text3)' }}>ATS Score</div>
+        <div style={{ fontSize:32, fontWeight:800, color, fontFamily: 'Outfit' }}>{score}</div>
+        <div style={{ fontSize:10, color:'var(--text3)', textTransform: 'uppercase', letterSpacing: 1 }}>ATS Score</div>
       </div>
     </div>
   );
@@ -268,82 +382,112 @@ export default function Resume() {
   const fileRef = useRef();
 
   const analyze = async () => {
-    if (!file) return toast.error('Please upload a file');
+    if (!file) return toast.error('Please upload a resume file');
     setLoading(true);
     try {
       const fd = new FormData();
       fd.append('resume', file);
       fd.append('targetRole', targetRole);
 
-      // Hits /api/agent/resume-upload via our Global API instance
       const res = await api.post('/agent/resume-upload', fd);
       setResult(res.data.analysis);
-      toast.success('Analysis Deep Dive Complete!');
+      toast.success('Career Blueprint Generated!');
     } catch (e) {
-      toast.error('AI Analysis Failed');
+      toast.error(e.response?.data?.error || 'AI Analysis Failed');
     } finally { setLoading(false); }
   };
 
   return (
-    <div style={{ padding:'32px', maxWidth:1100, margin:'0 auto' }}>
-      <h1 style={{ fontFamily:'Outfit', fontSize:32, marginBottom:8 }}>AI Resume Intelligence</h1>
-      <p style={{ color:'var(--text3)', marginBottom:32 }}>Get a personalized roadmap and weakness analysis from Claude AI.</p>
+    <div style={{ padding:'40px 20px', maxWidth:1100, margin:'0 auto' }}>
+      <header style={{ marginBottom: 40 }}>
+        <h1 style={{ fontFamily:'Outfit', fontSize:36, fontWeight: 800, marginBottom:8 }}>Resume Intelligence</h1>
+        <p style={{ color:'var(--text3)', fontSize: 16 }}>Detailed gap analysis, roadmap, and ATS optimization.</p>
+      </header>
 
       {/* Upload Zone */}
-      <div onClick={() => fileRef.current.click()} style={{ border:'2px dashed var(--border)', borderRadius:20, padding:40, textAlign:'center', cursor:'pointer', background:'var(--surface)', marginBottom:24 }}>
-        <input ref={fileRef} type="file" hidden onChange={e => setFile(e.target.files[0])} />
-        <div style={{ fontSize:40 }}>{file ? '📄' : '☁️'}</div>
-        <div style={{ fontWeight:600, marginTop:10 }}>{file ? file.name : 'Click to upload Resume (PDF/DOCX)'}</div>
+      <div 
+        onClick={() => fileRef.current.click()} 
+        style={{ 
+          border:'2px dashed var(--border)', 
+          borderRadius:24, 
+          padding:'60px 40px', 
+          textAlign:'center', 
+          cursor:'pointer', 
+          background:'var(--surface)', 
+          transition: 'all 0.2s',
+          marginBottom:24 
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      >
+        <input ref={fileRef} type="file" hidden onChange={e => setFile(e.target.files[0])} accept=".pdf,.docx,.txt" />
+        <div style={{ fontSize:48, marginBottom: 16 }}>{file ? '📄' : '📤'}</div>
+        <div style={{ fontWeight:700, fontSize: 18 }}>{file ? file.name : 'Drop your resume here'}</div>
+        <p style={{ color: 'var(--text3)', fontSize: 14, marginTop: 8 }}>Supports PDF, DOCX, TXT (Max 5MB)</p>
       </div>
 
       <div style={{ display:'flex', gap:12, marginBottom:40 }}>
-        <input value={targetRole} onChange={e => setTargetRole(e.target.value)} placeholder="Target Job Role..." style={{ flex:1, padding:'12px', borderRadius:10, background:'var(--bg)', border:'1px solid var(--border)', color:'white' }} />
-        <button onClick={analyze} disabled={loading} className="btn btn-primary">
-          {loading ? 'AI is thinking...' : 'Generate Full Roadmap'}
+        <input 
+          value={targetRole} 
+          onChange={e => setTargetRole(e.target.value)} 
+          placeholder="e.g. Full Stack Developer, Data Scientist..." 
+          style={{ flex:1, padding:'14px 20px', borderRadius:14, background:'var(--surface)', border:'1px solid var(--border)', color:'white', fontSize: 15 }} 
+        />
+        <button onClick={analyze} disabled={loading} className="btn btn-primary" style={{ padding: '0 30px', borderRadius: 14 }}>
+          {loading ? 'Analyzing...' : 'Generate Analysis'}
         </button>
       </div>
 
       {result && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
-          {/* Analysis Card */}
-          <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)', display:'flex', gap:30, alignItems:'center' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, animation: 'fadeInUp 0.5s ease' }}>
+          
+          {/* Main Verdict Card */}
+          <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:32, borderRadius:24, border:'1px solid var(--border)', display:'flex', gap:40, alignItems:'center', flexWrap: 'wrap' }}>
             <ScoreGauge score={result.atsScore} />
-            <div>
-              <h2 style={{ fontSize:22, marginBottom:10 }}>{result.overallVerdict}</h2>
-              <p style={{ color:'var(--text2)', fontSize:14 }}>{result.optimizedSummary}</p>
+            <div style={{ flex: 1, minWidth: 300 }}>
+              <h2 style={{ fontSize:24, fontWeight: 800, marginBottom:12, fontFamily: 'Outfit' }}>{result.overallVerdict}</h2>
+              <p style={{ color:'var(--text2)', fontSize:15, lineHeight: 1.6 }}>{result.optimizedSummary}</p>
             </div>
           </div>
 
-          {/* ROADMAP SECTION */}
-          <div style={{ background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
-            <h3 style={{ marginBottom:16, display:'flex', alignItems:'center', gap:10 }}>🗺️ Career Roadmap</h3>
-            {result.roadmap?.map((step, i) => (
-              <div key={i} style={{ padding:'12px', background:'var(--bg2)', borderRadius:12, marginBottom:10, borderLeft:'4px solid var(--accent2)' }}>
-                <div style={{ fontSize:11, color:'var(--accent2)', fontWeight:800 }}>STEP {i+1}</div>
-                <div style={{ fontSize:14 }}>{step}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* WEAKNESSES SECTION */}
-          <div style={{ background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
-            <h3 style={{ marginBottom:16, display:'flex', alignItems:'center', gap:10 }}>⚠️ Skill Gaps & Weaknesses</h3>
+          {/* WEAKNESSES / GAP ANALYSIS */}
+          <div style={{ background:'var(--surface)', padding:28, borderRadius:24, border:'1px solid var(--border)' }}>
+            <h3 style={{ marginBottom:20, fontSize: 18, fontWeight: 700, display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span> Critical Weaknesses
+            </h3>
             {result.weaknesses?.map((w, i) => (
-              <div key={i} style={{ padding:'12px', background:'rgba(255,100,100,0.05)', borderRadius:12, marginBottom:10, color:'var(--red)', fontSize:14, border:'1px solid rgba(255,100,100,0.1)' }}>
-                • {w}
+              <div key={i} style={{ padding:'14px', background:'rgba(255,77,77,0.06)', borderRadius:16, marginBottom:12, color:'#ff6b6b', fontSize:14, border:'1px solid rgba(255,77,77,0.1)' }}>
+                <strong>Issue:</strong> {w}
               </div>
             ))}
           </div>
 
-          {/* KEYWORDS */}
-          <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:24, borderRadius:20, border:'1px solid var(--border)' }}>
-            <h3 style={{ marginBottom:16 }}>🏷️ Keywords to Add for ATS</h3>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
-              {result.keywordsToAdd?.map((kw, i) => (
-                <span key={i} style={{ background:'var(--bg2)', padding:'6px 16px', borderRadius:20, fontSize:13, border:'1px solid var(--border)' }}>+ {kw}</span>
+          {/* ROADMAP / ACTION PLAN */}
+          <div style={{ background:'var(--surface)', padding:28, borderRadius:24, border:'1px solid var(--border)' }}>
+            <h3 style={{ marginBottom:20, fontSize: 18, fontWeight: 700, display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize: 20 }}>🗺️</span> 30-Day Roadmap
+            </h3>
+            {result.roadmap?.map((step, i) => (
+              <div key={i} style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0, fontSize: 12 }}>{i+1}</div>
+                <div style={{ fontSize:14, color: 'var(--text2)', lineHeight: 1.5, paddingTop: 4 }}>{step}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* SKILLS TO LEARN */}
+          <div style={{ gridColumn:'1 / -1', background:'var(--surface)', padding:28, borderRadius:24, border:'1px solid var(--border)' }}>
+            <h3 style={{ marginBottom:20, fontSize: 18, fontWeight: 700 }}>📚 Skills & Technologies to Master</h3>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
+              {result.keywordsToAdd?.map((skill, i) => (
+                <div key={i} style={{ background:'var(--bg2)', padding:'10px 20px', borderRadius:14, fontSize:14, border:'1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: 'var(--accent2)', fontWeight: 800 }}>+</span> {skill}
+                </div>
               ))}
             </div>
+            <p style={{ marginTop: 20, fontSize: 13, color: 'var(--text3)' }}>* Incorporating these keywords can increase your ATS score by up to 30%.</p>
           </div>
+
         </div>
       )}
     </div>
