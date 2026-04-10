@@ -704,8 +704,7 @@ module.exports = router;*/
 //new change at 10.05
 const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
-import { callGemini } from '../agents/geminiAgent';
-import { callClaude } from '../agents/claudeAgent';
+
 
 // ✅ ONLY THIS IMPORT (no duplicate)
 const { resumeAgent } = require('../agents/geminiAgent');
@@ -753,11 +752,7 @@ router.post(
 
       console.log("📄 Extracted length:", resumeText.length);
       //new add krra 12 02 pe
-      const callAI = async (prompt, system = '', messages = null) => {
-  try { return await callClaude(prompt, system, messages); }
-  catch (e) { return await callGemini(prompt, system); }
-};
-
+    
       if (!resumeText || resumeText.length < 50) {
         return res.status(400).json({
           error: 'Resume text too short or unreadable'
