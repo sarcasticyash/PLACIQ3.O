@@ -83,7 +83,7 @@ function getMockResponse(prompt) {
 module.exports = { callGemini };
 */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+/*const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 async function resumeAgent({ resumeText, role }) {
@@ -195,4 +195,91 @@ function getMockResponse(prompt) {
 }
 
 module.exports = { callGemini , resumeAgent};
+*/
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// ✅ SAFE INIT (no crash if key missing)
+const genAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
+
+// 🚀 RESUME AGENT (same tera)
+async function resumeAgent({ resumeText, role }) {
+  const prompt = `
+Analyze this resume for role: ${role}
+
+${resumeText.slice(0, 6000)}
+
+Return JSON:
+{
+  "atsScore": number,
+  "overallVerdict": "string",
+  "weaknesses": ["string"],
+  "roadmap": ["string"],
+  "keywordsToAdd": ["string"],
+  "optimizedSummary": "string"
+}
+`;
+
+  const resp = await callGemini(prompt);
+
+  try {
+    const clean = resp.replace(/```json|```/g, '').trim();
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    return JSON.parse(clean.substring(start, end + 1));
+  } catch {
+    return JSON.parse(getMockResponse("resume"));
+  }
+}
+
+// 🤖 GEMINI CALL (SAFE)
+async function callGemini(prompt, systemContext = '') {
+  try {
+    // ✅ NO CRASH CONDITION
+    if (!process.env.GEMINI_API_KEY || !genAI) {
+      console.log("⚠️ Using mock (no API key)");
+      return getMockResponse(prompt);
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash'
+    });
+
+    const fullPrompt = systemContext
+      ? `${systemContext}\n\n${prompt}`
+      : prompt;
+
+    const result = await model.generateContent(fullPrompt);
+
+    return result.response.text();
+
+  } catch (e) {
+    console.error('🔥 Gemini error:', e.message);
+    return getMockResponse(prompt);
+  }
+}
+
+// 🧠 MOCK (same tera)
+function getMockResponse(prompt) {
+  const lower = prompt.toLowerCase();
+
+  if (lower.includes('resume') || lower.includes('ats')) {
+    return JSON.stringify({
+      atsScore: 68,
+      improvements: [
+        { issue: 'Missing quantified achievements', fix: 'Add metrics like "Improved API response time by 40%"', priority: 'high' }
+      ],
+      optimizedSummary: "Good resume",
+      keywordsToAdd: ["React", "Node.js"]
+    });
+  }
+
+  return JSON.stringify({
+    message: 'Analysis complete.',
+    data: {}
+  });
+}
+
+// 🔥 EXPORT
+module.exports = { callGemini, resumeAgent };
