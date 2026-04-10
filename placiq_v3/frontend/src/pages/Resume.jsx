@@ -389,9 +389,14 @@ export default function Resume() {
       fd.append('resume', file);
       fd.append('targetRole', targetRole);
 
-      const res = await api.post('/agent/resume-upload', fd);
-      setResult(res.data.analysis);
-      toast.success('Career Blueprint Generated!');
+      //const res = await api.post('/agent/resume-upload', fd);
+      //setResult(res.data.analysis);
+      //toast.success('Career Blueprint Generated!');
+      const res = await api.post('/agent/resume-upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    setResult(res.data.analysis);
+    toast.success('Career Blueprint Generated!');
     } catch (e) {
       toast.error(e.response?.data?.error || 'AI Analysis Failed');
     } finally { setLoading(false); }
