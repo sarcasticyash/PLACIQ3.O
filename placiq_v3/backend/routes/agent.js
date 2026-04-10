@@ -570,9 +570,9 @@
 //     }
 // });
 
-// module.exports = router;
+// moduleconst.exports = router;
 
-const router = require('express').Router();
+ /*router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
 const { callGemini } = require('../agents/geminiAgent');
 const { callClaude } = require('../agents/claudeAgent');
@@ -698,6 +698,135 @@ router.post('/analyze', authMiddleware, async (req, res) => {
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
+});
+
+module.exports = router;*/
+//new change at 10.05
+const router = require('express').Router();
+const authMiddleware = require('../middleware/auth');
+
+const {
+  resumeAgent,
+  profileAgent,
+  roadmapAgent,
+  marketAgent
+} = require('../agents/geminiAgent');
+
+const multer = require('multer');
+const path = require('path');
+const pdfParse = require('pdf-parse');
+
+// 📂 Multer Setup
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+// 🚀 RESUME UPLOAD + ANALYSIS
+router.post(
+  '/resume-upload',
+  authMiddleware,
+  upload.single('resume'),
+  async (req, res) => {
+    try {
+      console.log("📂 File received:", req.file?.originalname);
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      let resumeText = '';
+      const ext = path.extname(req.file.originalname).toLowerCase();
+
+      // 📄 PDF handling
+      if (ext === '.pdf') {
+        try {
+          const pdfData = await pdfParse(req.file.buffer);
+          resumeText = pdfData.text;
+        } catch (err) {
+          return res.status(400).json({
+            error: 'Failed to read PDF (maybe protected)'
+          });
+        }
+      } else {
+        resumeText = req.file.buffer.toString('utf-8');
+      }
+
+      console.log("📄 Extracted length:", resumeText.length);
+
+      if (!resumeText || resumeText.length < 50) {
+        return res.status(400).json({
+          error: 'Resume text too short or unreadable'
+        });
+      }
+
+      // 🤖 AI CALL
+      const analysis = await resumeAgent({
+        resumeText,
+        role: req.body.targetRole || 'Software Engineer'
+      });
+
+      // 💾 Save to DB (async)
+      const User = require('../models/User');
+      if (req.user.id !== 'demo123') {
+        User.findByIdAndUpdate(req.user.id, {
+          $set: { 'profile.resumeText': resumeText.slice(0, 5000) }
+        }).catch(err => console.error("DB Save Error:", err));
+      }
+
+      res.json({
+        success: true,
+        analysis
+      });
+
+    } catch (e) {
+      console.error("🔥 Resume Route Error:", e);
+      res.status(500).json({
+        error: e.message || 'Server error'
+      });
+    }
+  }
+);
+
+// 🧠 GENERIC MULTI-AI ROUTE
+router.post('/analyze', authMiddleware, async (req, res) => {
+  try {
+    const { agentType, data } = req.body;
+
+    let result;
+
+    switch (agentType) {
+      case 'resume':
+        result = await resumeAgent(data);
+        break;
+
+      case 'profile':
+        result = await profileAgent(data);
+        break;
+
+      case 'roadmap':
+        result = await roadmapAgent(data);
+        break;
+
+      case 'market':
+        result = await marketAgent();
+        break;
+
+      default:
+        return res.status(400).json({
+          error: 'Invalid agent type'
+        });
+    }
+
+    res.json({ success: true, result });
+
+  } catch (e) {
+    console.error("🔥 Analyze Route Error:", e);
+    res.status(500).json({
+      error: e.message
+    });
+  }
 });
 
 module.exports = router;

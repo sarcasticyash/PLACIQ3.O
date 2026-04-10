@@ -498,9 +498,9 @@
 //     </div>
 //   );
 // }
+//again changed at 10:07
 
-
-import React, { useState, useRef } from 'react';
+/*import React, { useState, useRef } from 'react';
 import { useAuth, api } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -564,7 +564,7 @@ export default function Resume() {
         </p>
       </header>
 
-      {/* Upload Zone */}
+      
       <div 
         onClick={() => !loading && fileRef.current.click()} 
         style={{ 
@@ -622,7 +622,6 @@ export default function Resume() {
       {result && !loading && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(12, 1fr)', gap:24, animation: 'fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1)' }}>
           
-          {/* Main Verdict Card */}
           <div style={{ gridColumn:'1 / span 12', background:'linear-gradient(145deg, var(--surface), var(--bg))', padding:'40px', borderRadius:32, border:'1px solid var(--border)', display:'flex', gap:40, alignItems:'center', flexWrap: 'wrap', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
             <ScoreGauge score={result.atsScore} />
             <div style={{ flex: 1, minWidth: 300 }}>
@@ -636,7 +635,7 @@ export default function Resume() {
             </div>
           </div>
 
-          {/* ROADMAP / ACTION PLAN */}
+         
           <div style={{ gridColumn: '1 / span 7', background:'var(--surface)', padding:32, borderRadius:32, border:'1px solid var(--border)', minHeight: 400 }}>
             <h3 style={{ marginBottom:28, fontSize: 20, fontWeight: 800, display:'flex', alignItems:'center', gap:12 }}>
               <span style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(168,85,247,0.1)', color: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗺️</span>
@@ -656,7 +655,6 @@ export default function Resume() {
             </div>
           </div>
 
-          {/* WEAKNESSES / GAP ANALYSIS */}
           <div style={{ gridColumn: '8 / span 5', background:'var(--surface)', padding:32, borderRadius:32, border:'1px solid var(--border)' }}>
             <h3 style={{ marginBottom:28, fontSize: 20, fontWeight: 800, display:'flex', alignItems:'center', gap:12 }}>
               <span style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,77,77,0.1)', color: '#ff4d4d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚠️</span>
@@ -672,7 +670,7 @@ export default function Resume() {
             </div>
           </div>
 
-          {/* SKILLS TO LEARN */}
+          
           <div style={{ gridColumn:'1 / span 12', background:'var(--surface)', padding:32, borderRadius:32, border:'1px solid var(--border)', background: 'linear-gradient(to right, var(--surface), transparent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 20 }}>
                 <div>
@@ -695,7 +693,7 @@ export default function Resume() {
         </div>
       )}
 
-      {/* CSS for Animations and Extras */}
+  
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(30px); }
@@ -727,6 +725,134 @@ export default function Resume() {
           80%, 100% { content: ''; }
         }
       `}} />
+    </div>
+  );
+}*/
+import React, { useState, useRef } from 'react';
+import { useAuth, api } from '../context/AuthContext';
+import toast from 'react-hot-toast';
+
+// --- Gauge Component ---
+function ScoreGauge({ score }) {
+  const color = score >= 80 ? '#00e87a' : score >= 60 ? '#ffb547' : '#ff4d4d';
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+
+  return (
+    <div style={{ position:'relative', width:140, height:140, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform:'rotate(-90deg)', position:'absolute' }}>
+        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="12" />
+        <circle cx="70" cy="70" r={r} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          style={{ transition:'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
+        />
+      </svg>
+      <div style={{ textAlign:'center', zIndex: 1 }}>
+        <div style={{ fontSize:36, fontWeight:900, color }}>{score}</div>
+        <div style={{ fontSize:10, color:'gray' }}>ATS Score</div>
+      </div>
+    </div>
+  );
+}
+
+export default function Resume() {
+  const { user } = useAuth();
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [targetRole, setTargetRole] = useState(user?.profile?.targetRole || 'Software Engineer');
+  const fileRef = useRef();
+
+  // 🔥 FIXED ANALYZE FUNCTION
+  const analyze = async () => {
+    if (!file) return toast.error('Please upload a resume file');
+
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const fd = new FormData();
+      fd.append('resume', file);
+      fd.append('targetRole', targetRole);
+
+      // ❌ DON'T set Content-Type manually
+      const res = await api.post('/agent/resume-upload', fd);
+
+      if (res.data?.analysis) {
+        setResult(res.data.analysis);
+        toast.success('Career Blueprint Generated!');
+      } else {
+        toast.error('Invalid response from server');
+      }
+
+    } catch (e) {
+      console.error("FRONTEND ERROR:", e);
+      toast.error(e.response?.data?.error || 'AI Analysis Failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding:'40px', maxWidth:900, margin:'auto', color:'white' }}>
+      <h1>Resume Analyzer</h1>
+
+      {/* Upload */}
+      <div onClick={() => !loading && fileRef.current.click()}
+        style={{ border:'2px dashed gray', padding:'30px', textAlign:'center', cursor:'pointer', marginBottom:'20px' }}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          hidden
+          accept=".pdf,.docx,.txt"
+          onChange={(e) => {
+            const selected = e.target.files[0];
+            setFile(selected);
+            e.target.value = null; // 🔥 FIX re-upload
+          }}
+        />
+        <p>{file ? file.name : "Click to upload resume"}</p>
+      </div>
+
+      {/* Role Input */}
+      <input
+        value={targetRole}
+        onChange={e => setTargetRole(e.target.value)}
+        placeholder="Target Role"
+        style={{ padding:'10px', width:'100%', marginBottom:'20px' }}
+      />
+
+      {/* Button */}
+      <button onClick={analyze} disabled={loading}>
+        {loading ? "Analyzing..." : "Analyze Resume"}
+      </button>
+
+      {/* Result */}
+      {result && (
+        <div style={{ marginTop:'30px' }}>
+          <ScoreGauge score={result.atsScore} />
+
+          <h2>{result.overallVerdict}</h2>
+          <p>{result.optimizedSummary}</p>
+
+          <h3>Weaknesses</h3>
+          <ul>
+            {result.weaknesses?.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+
+          <h3>Roadmap</h3>
+          <ul>
+            {result.roadmap?.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+
+          <h3>Keywords</h3>
+          <ul>
+            {result.keywordsToAdd?.map((k, i) => <li key={i}>{k}</li>)}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+/* { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -81,3 +81,136 @@ function getMockResponse(prompt) {
 }
 
 module.exports = { callGemini };
+*/
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// 🔁 Base AI Call
+async function callGemini(prompt, system = '') {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY missing");
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash'
+    });
+
+    const fullPrompt = system
+      ? `${system}\n\n${prompt}`
+      : prompt;
+
+    const result = await model.generateContent(fullPrompt);
+    const text = result.response.text();
+
+    if (!text) throw new Error("Empty Gemini response");
+
+    console.log("✅ Gemini Response");
+
+    return text;
+
+  } catch (e) {
+    console.error("🔥 Gemini Error:", e.message);
+    throw e;
+  }
+}
+
+// 🧠 JSON Parser (shared)
+function parseJSON(resp) {
+  try {
+    const clean = resp.replace(/```json|```/g, '').trim();
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    return JSON.parse(clean.substring(start, end + 1));
+  } catch (e) {
+    console.error("❌ JSON Parse Error:", resp);
+    throw new Error("Invalid AI JSON");
+  }
+}
+
+// ================= AGENTS =================
+
+// 🚀 RESUME AGENT
+async function resumeAgent({ resumeText, role }) {
+  const prompt = `
+Analyze this resume for role: ${role}
+
+${resumeText.slice(0, 6000)}
+
+Return JSON:
+{
+  "atsScore": number,
+  "overallVerdict": "string",
+  "weaknesses": ["string"],
+  "roadmap": ["string"],
+  "keywordsToAdd": ["string"],
+  "optimizedSummary": "string"
+}
+`;
+
+  const resp = await callGemini(prompt, "You are an ATS resume analyzer. Only return JSON.");
+  return parseJSON(resp);
+}
+
+// 👤 PROFILE AGENT
+async function profileAgent(data) {
+  const prompt = `
+Analyze this student profile:
+
+${JSON.stringify(data)}
+
+Return JSON:
+{
+  "strengths": [],
+  "weaknesses": [],
+  "readinessScore": number,
+  "summary": "string"
+}
+`;
+
+  const resp = await callGemini(prompt, "Career mentor AI");
+  return parseJSON(resp);
+}
+
+// 🗺️ ROADMAP AGENT
+async function roadmapAgent({ goal }) {
+  const prompt = `
+Create a 30-day roadmap for: ${goal}
+
+Return JSON:
+{
+  "timeline": "30 days",
+  "steps": ["step1", "step2", "step3"]
+}
+`;
+
+  const resp = await callGemini(prompt, "Career strategist");
+  return parseJSON(resp);
+}
+
+// 📊 MARKET AGENT
+async function marketAgent() {
+  const prompt = `
+Give current tech hiring trends.
+
+Return JSON:
+{
+  "topRoles": [],
+  "skills": [],
+  "trend": "string"
+}
+`;
+
+  const resp = await callGemini(prompt, "Tech market analyst");
+  return parseJSON(resp);
+}
+
+// 🎯 EXPORT ALL
+module.exports = {
+  callGemini,
+  resumeAgent,
+  profileAgent,
+  roadmapAgent,
+  marketAgent
+};
